@@ -34,6 +34,17 @@ module.exports = (app) => {
       .send(payload);
   }
 
+  function updateProject(token, eventId, projectId, payload) {
+    return request(app)
+      .put(`/api/v1/events/${eventId}/projects/${projectId}?token=${token}`)
+      .send(payload);
+  }
+
+  function getProject(token, eventId, projectId) {
+    return request(app)
+      .get(`/api/v1/events/${eventId}/projects/${projectId}?token=${token}`);
+  }
+
   function getEvent(slug) {
     return request(app)
       .get(`/api/v1/events/${slug}`);
@@ -65,6 +76,8 @@ module.exports = (app) => {
     },
     project: {
       create: createProject,
+      update: updateProject,
+      get: getProject,
     },
   };
 };

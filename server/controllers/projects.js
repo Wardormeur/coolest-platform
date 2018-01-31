@@ -1,13 +1,15 @@
 const ProjectModel = require('../models/project');
+const ProjectUsersModel = require('../models/projectUsers');
 const UserHandler = require('./users');
 const UserModel = require('../models/user');
-const { pick } = require('lodash');
+const { pick, differenceWith, intersectionWith } = require('lodash');
 const snakeCase = require('decamelize');
 
 class Project {
   static post(creator, project, eventId) {
     // TODO : apply endpoint validation
     // TODO : transaction
+    // TODO : transform into handler
     const projectPayload = Object.assign(
       {},
       pick(project, ['name', 'category', 'description', 'org', 'orgRef']),
@@ -64,6 +66,33 @@ class Project {
 
   static get(identifier, withRelated) {
     return ProjectModel.where(identifier).fetch({ withRelated });
+  }
+
+  static removeUsers(projectId, userIds) {
+    return ProjectUsersModel
+      .where('user_id', 'IN', userIds)
+      .where('project_id', '=', projectId)
+      .where('type', '!=', 'owner')
+      .fetchAll()
+      .then((assocs) => {
+        return Promise.all(assocs.map(assoc => assoc.destroy()));
+      });
+  }
+
+  static getMissingUsers(originalUsers, newUsers, association) {
+    const usersToBeDeleted = differenceWith(
+      originalUsers,
+      newUsers,
+      (u1, u2) => u2.id === u1.id,
+    );
+    // We map the users to their associations
+    const assocIds = intersectionWith(
+      association,
+      usersToBeDeleted,
+      // Filter out the owner : it shouldn't be changed
+      (asso, u) => asso.userId === u.id && asso.type !== 'owner',
+    );
+    return assocIds.map(a => a.userId);
   }
 
   static getByEvent(eventId, query, paginated) {
